@@ -67,6 +67,12 @@ public class PackAnalytics #if FABRIC implements ModInitializer #endif
     public static final String ID = "packanalytics";
     public static final Logger LOGGER = LogManager.getLogger(MODNAME);
 
+    // Vonix: circuit breaker state for keepalive
+    private static final AtomicInteger consecutiveFailures = new AtomicInteger(0);
+    private static final AtomicInteger suspendedCycleCounter = new AtomicInteger(0);
+    private static volatile boolean circuitOpen = false;
+    private static final int BACKOFF_CYCLES = 12; // ~1h with default 5min rate
+
     public PackAnalytics(#if NEO IEventBus modEventBus, ModContainer modContainer #endif) {
         #if FORGE
         var context = FMLJavaModLoadingContext.get();
@@ -110,11 +116,23 @@ public class PackAnalytics #if FABRIC implements ModInitializer #endif
     }
 
     private void startKeepAliveTask() {
+        if (!AllConfigs.common().enableKeepalive.get()) {
+            LOGGER.info("Pack Analytics keepalive is disabled via config; scheduler not started.");
+            return;
+        }
         ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
         scheduler.scheduleAtFixedRate(() -> sendKeepAliveRequest(false), 1, AllConfigs.common().updateRate.get(), TimeUnit.MINUTES);
     }
 
     private void sendKeepAliveRequest(boolean disconnect) {
+        // Vonix: circuit-breaker — when open, skip most cycles
+        if (!disconnect && circuitOpen) {
+            if (suspendedCycleCounter.incrementAndGet() < BACKOFF_CYCLES) {
+                return;
+            }
+            suspendedCycleCounter.set(0);
+            // fall through and attempt one probe
+        }
         try {
             var packID = AllConfigs.common().packID.get();
             String uri = AllConfigs.common().endpoint_url.get();
@@ -152,10 +170,36 @@ public class PackAnalytics #if FABRIC implements ModInitializer #endif
             int responseCode = connection.getResponseCode();
             if (responseCode != 200) {
                 LOGGER.warn("Pack Analytics keepalive non-200 response: {}", responseCode);
+                recordKeepaliveFailure();
+            } else {
+                recordKeepaliveSuccess();
             }
         } catch (Exception e) {
             LOGGER.warn("Pack Analytics keepalive failed: {}", e.getMessage());
+            recordKeepaliveFailure();
         }
+    }
+
+    // Vonix: circuit-breaker bookkeeping
+    private static void recordKeepaliveFailure() {
+        int n = consecutiveFailures.incrementAndGet();
+        int threshold = AllConfigs.common().circuitBreakerThreshold.get();
+        if (!circuitOpen && n >= threshold) {
+            circuitOpen = true;
+            suspendedCycleCounter.set(0);
+            int rate = AllConfigs.common().updateRate.get();
+            LOGGER.warn("Pack Analytics endpoint appears unreachable after {} failures, suspending keepalive. Will retry every {} minutes.",
+                n, rate * BACKOFF_CYCLES);
+        }
+    }
+
+    private static void recordKeepaliveSuccess() {
+        if (circuitOpen) {
+            LOGGER.info("Pack Analytics endpoint reachable again, resuming.");
+            circuitOpen = false;
+            suspendedCycleCounter.set(0);
+        }
+        consecutiveFailures.set(0);
     }
 
     public static boolean isDedicatedServer() {
