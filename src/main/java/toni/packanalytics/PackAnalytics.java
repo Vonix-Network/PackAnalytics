@@ -151,10 +151,10 @@ public class PackAnalytics #if FABRIC implements ModInitializer #endif
 
             int responseCode = connection.getResponseCode();
             if (responseCode != 200) {
-                LOGGER.warn("Failed to send keepalive request, response code: " + responseCode);
+                LOGGER.warn("Pack Analytics keepalive non-200 response: {}", responseCode);
             }
         } catch (Exception e) {
-            LOGGER.error("Error sending keepalive request: " + e.getMessage(), e);
+            LOGGER.warn("Pack Analytics keepalive failed: {}", e.getMessage());
         }
     }
 
