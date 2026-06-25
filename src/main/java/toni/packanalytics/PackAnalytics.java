@@ -56,6 +56,7 @@ import java.net.URL;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 #if FORGELIKE
 @Mod("packanalytics")
@@ -144,6 +145,9 @@ public class PackAnalytics #if FABRIC implements ModInitializer #endif
             URL url = new URL(urlString);
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("GET");
+            int timeoutMs = Math.max(1, AllConfigs.common().keepaliveTimeoutSeconds.get()) * 1000;
+            connection.setConnectTimeout(timeoutMs); // Vonix: Connect Timeout
+            connection.setReadTimeout(timeoutMs);    // Vonix: Read Timeout
 
             int responseCode = connection.getResponseCode();
             if (responseCode != 200) {
