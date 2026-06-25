@@ -39,6 +39,11 @@ public class CCommon extends ConfigBase {
     public final CValue<String, ConfigValue<String>> packID = new CValue<>("Pack ID", builder -> builder.define("Pack ID", ""), "Identifier for this modpack");
     public final ConfigInt updateRate = i(30, "Update Rate", "Interval between keepalive requests, in minutes.");
 
+    // --- Vonix fork additions (1.0.4-vonix.1) ---
+    public final ConfigBool enableKeepalive = b(true, "Enable Keepalive", "Master switch for the keepalive polling task. When false, the scheduler is never started.");
+    public final ConfigInt keepaliveTimeoutSeconds = i(5, "Keepalive Timeout (s)", "Connect/read timeout in seconds for each keepalive HTTP request.");
+    public final ConfigInt circuitBreakerThreshold = i(5, "Circuit Breaker Threshold", "Consecutive failures before the circuit-breaker engages and suspends frequent polling.");
+
     @Override
     public String getName() {
         return "common";
