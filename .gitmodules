@@ -1,0 +1,3 @@
+[submodule "blahaj-vendor"]
+	path = blahaj-vendor
+	url = https://github.com/txnimc/Blahaj.git

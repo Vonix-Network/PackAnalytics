@@ -10,8 +10,9 @@ pluginManagement {
 		maven("https://maven.neoforged.net/releases/")
 		maven("https://maven.kikugie.dev/snapshots")
 		maven("https://maven.kikugie.dev/releases")
-		maven("https://maven.txni.dev/releases")
+		// Vonix fork: maven.txni.dev was offline; vendored toni.blahaj via includeBuild instead.
 	}
+	includeBuild("blahaj-vendor")
 }
 
 plugins {
