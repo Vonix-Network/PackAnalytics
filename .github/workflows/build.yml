@@ -1,0 +1,37 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-1_20_1-forge:
+    name: 1.20.1-forge
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Build 1.20.1-forge
+        run: ./gradlew "1.20.1-forge:build" --no-daemon -Dorg.gradle.jvmargs=-Xmx3G
+
+      - name: Upload jars
+        uses: actions/upload-artifact@v4
+        with:
+          name: packanalytics-1.20.1-forge
+          path: versions/1.20.1-forge/build/libs/*.jar
+          if-no-files-found: error
